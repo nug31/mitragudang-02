@@ -24,12 +24,13 @@ import ImportItemsModal from "../components/inventory/ImportItemsModal";
 import CategoryManagement from "../components/inventory/CategoryManagement";
 import BrowseItemsModal from "../components/inventory/BrowseItemsModal";
 import StockHistoryModal from "../components/inventory/StockHistoryModal";
-import StockAdjustmentModal from "../components/inventory/StockAdjustmentModal";
 import StockSummaryCard from "../components/inventory/StockSummaryCard";
 import Select from "../components/ui/Select";
 import Input from "../components/ui/Input";
+import * as XLSX from "xlsx";
 import { itemService } from "../services/itemService";
 import { categoryService } from "../services/categoryService";
+import { requestService } from "../services/requestService";
 import { normalizeCategory, categoriesAreEqual } from "../utils/categoryUtils";
 import { API_BASE_URL } from "../config";
 
@@ -48,10 +49,6 @@ const InventoryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<Item | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [stockModal, setStockModal] = useState<{ isOpen: boolean; type: "masuk" | "keluar" }>({
-    isOpen: false,
-    type: "masuk",
-  });
   const [categoryOptions, setCategoryOptions] = useState([
     { value: "all", label: "All Categories" },
     { value: "electronics", label: "Electronics" },
@@ -248,6 +245,64 @@ const InventoryPage: React.FC = () => {
     return true;
   });
 
+  const exportItemsToExcel = () => {
+    if (items.length === 0) return;
+
+    const exportData = items.map((item) => ({
+      ID: item.id,
+      Nama: item.name,
+      Deskripsi: item.description,
+      Kategori: item.category,
+      Stok: item.quantity,
+      "Min Stok": item.minQuantity,
+      Status: item.status,
+      Harga: item.price || 0,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
+
+    const filename = `Inventory_List_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  };
+
+  const exportRequestsToExcel = async () => {
+    try {
+      setLoading(true);
+      const requests = await requestService.getAllRequests();
+
+      if (requests.length === 0) {
+        alert("Tidak ada riwayat permintaan untuk diekspor.");
+        return;
+      }
+
+      const exportData = requests.map((req) => ({
+        ID: req.id,
+        "Nama Barang": req.itemName,
+        Pemohon: req.requesterName,
+        Proyek: req.projectName || "-",
+        Jumlah: req.quantity,
+        Status: req.status,
+        Prioritas: req.priority,
+        Tanggal: new Date(req.createdAt).toLocaleDateString("id-ID"),
+        Alasan: req.description || "-",
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "User Requests");
+
+      const filename = `User_Requests_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+    } catch (err) {
+      console.error("Error exporting requests:", err);
+      setError("Failed to export requests");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const resetFilters = () => {
     setCategoryFilter("all");
     setStatusFilter("all");
@@ -285,21 +340,21 @@ const InventoryPage: React.FC = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setStockModal({ isOpen: true, type: "masuk" })}
+              onClick={exportItemsToExcel}
               icon={<ArrowUpCircle className="h-4 w-4 text-green-600" />}
               className="flex-shrink-0 border-green-200 text-green-700 hover:bg-green-50"
               size="sm"
             >
-              Barang Masuk
+              Barang Masuk (Excel)
             </Button>
             <Button
               variant="outline"
-              onClick={() => setStockModal({ isOpen: true, type: "keluar" })}
+              onClick={exportRequestsToExcel}
               icon={<ArrowDownCircle className="h-4 w-4 text-red-600" />}
               className="flex-shrink-0 border-red-200 text-red-700 hover:bg-red-50"
               size="sm"
             >
-              Barang Keluar
+              Barang Keluar (Excel)
             </Button>
             <Button
               variant="secondary"
@@ -470,15 +525,6 @@ const InventoryPage: React.FC = () => {
             setEditingItem(item);
             setShowBrowseModal(false);
           }}
-        />
-      )}
-
-      {stockModal.isOpen && user && (
-        <StockAdjustmentModal
-          type={stockModal.type}
-          user={user}
-          onClose={() => setStockModal({ ...stockModal, isOpen: false })}
-          onSuccess={fetchItems}
         />
       )}
     </MainLayout>
