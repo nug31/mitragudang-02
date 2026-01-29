@@ -546,26 +546,33 @@ app.post("/api/requests", async (req, res) => {
 app.put("/api/items/:id", async (req, res) => {
     try {
         const { id } = req.params;
-        const { quantity, notes, userId, ...updates } = req.body;
+        const { quantity, notes, historyNotes, userId, name, description, category, minQuantity, unit, price } = req.body;
 
-        const existingResult = await db.query("SELECT quantity FROM items WHERE id = $1", [id]);
-        if (existingResult.rows.length === 0) return res.status(404).json({ success: false, message: "Item not found" });
+        const existingResult = await db.query('SELECT quantity FROM items WHERE id = $1', [id]);
+        if (existingResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: "Item not found" });
+        }
 
         const oldQty = existingResult.rows[0].quantity;
+        const actualNotes = historyNotes || notes || 'Manual update';
 
-        // Map updates to snake_case if necessary
-        const mappedUpdates = {};
-        if (updates.minQuantity !== undefined) {
-            mappedUpdates.min_quantity = updates.minQuantity;
-            delete updates.minQuantity;
+        // Filter valid updates and map to quoted names where necessary (for PostgreSQL/Supabase)
+        const updates = {};
+        if (name !== undefined) updates.name = name;
+        if (description !== undefined) updates.description = description;
+        if (category !== undefined) updates.category = category;
+        if (quantity !== undefined) updates.quantity = quantity;
+        if (minQuantity !== undefined) updates['"minQuantity"'] = minQuantity; // Quoted for camelCase in PG
+        if (unit !== undefined) updates.unit = unit;
+        if (price !== undefined) updates.price = price;
+
+        if (Object.keys(updates).length === 0) {
+            return res.json({ success: true, message: "No updates provided" });
         }
-        // ... add other mappings if needed
-
-        const allUpdates = { ...updates, ...mappedUpdates, quantity };
 
         // Build update query
-        const fields = Object.keys(allUpdates).map((key, index) => `${key} = $${index + 1}`);
-        const values = Object.values(allUpdates);
+        const fields = Object.keys(updates).map((key, index) => `${key} = $${index + 1}`);
+        const values = Object.values(updates);
         values.push(id);
 
         const updateQuery = `UPDATE items SET ${fields.join(", ")} WHERE id = $${values.length} RETURNING *`;
@@ -573,17 +580,29 @@ app.put("/api/items/:id", async (req, res) => {
         const updatedItem = updatedResult.rows[0];
 
         // History logging
-        if (quantity !== oldQty) {
+        if (quantity !== undefined && quantity !== oldQty) {
             await db.query(`
-        INSERT INTO stock_history (item_id, change_type, quantity_before, quantity_change, quantity_after, notes, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [id, quantity > oldQty ? 'restock' : 'adjustment', oldQty, (quantity || 0) - (oldQty || 0), quantity, notes || 'Manual update', userId]);
+                INSERT INTO stock_history ("item_id", "change_type", "quantity_before", "quantity_change", "quantity_after", notes, "created_by")
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `, [
+                id,
+                quantity > oldQty ? 'restock' : 'adjustment',
+                oldQty || 0,
+                (quantity || 0) - (oldQty || 0),
+                quantity,
+                actualNotes,
+                userId
+            ]);
         }
 
         res.json(updatedItem);
     } catch (error) {
-        console.error("Update item error:", error);
-        res.status(500).json({ success: false, error: error.message });
+        console.error("Update item error detail:", error);
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            detail: "Error updating item. Ensure all field names match the database schema."
+        });
     }
 });
 
