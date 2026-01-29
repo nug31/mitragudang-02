@@ -248,6 +248,30 @@ app.get("/api/setup-categories", async (req, res) => {
 // Categories API - with robust auto-sync and on-the-fly migration (Netlify compatible)
 app.get("/api/categories", async (req, res) => {
     try {
+        // 0. Ensure table and constraints exist (Robustness for partial migrations)
+        try {
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS categories (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE NOT NULL,
+                    description TEXT,
+                    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
+            // Attempt to add unique constraint if missing (handles cases where table was created without it)
+            await db.query(`
+                DO $$ 
+                BEGIN 
+                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categories_name_key') THEN 
+                        ALTER TABLE categories ADD CONSTRAINT categories_name_key UNIQUE (name); 
+                    END IF; 
+                END $$;
+            `);
+        } catch (setupErr) {
+            console.warn("Pre-fetch setup warning (ignorable if table exists):", setupErr.message);
+        }
+
         // 1. Try to fetch existing categories
         let result = await db.query("SELECT * FROM categories ORDER BY name");
 
@@ -275,54 +299,14 @@ app.get("/api/categories", async (req, res) => {
 
         res.json({ success: true, categories: result.rows });
     } catch (error) {
-        // Fallback for undefined_table (42P01) - common on first run in serverless
-        if (error.code === '42P01') {
-            console.log("Categories table missing. Attempting on-the-fly migration...");
-            try {
-                // Table missing - CREATE IT NOW
-                await db.query(`
-                    CREATE TABLE IF NOT EXISTS categories (
-                        id SERIAL PRIMARY KEY,
-                        name VARCHAR(255) UNIQUE NOT NULL,
-                        description TEXT,
-                        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                    );
-                `);
-
-                // Seed
-                await db.query(`
-                    INSERT INTO categories (name, description)
-                    SELECT DISTINCT category, category || ' items'
-                    FROM items
-                    WHERE category IS NOT NULL AND category != ''
-                    ON CONFLICT (name) DO NOTHING;
-                `);
-
-                // Re-fetch
-                const result = await db.query("SELECT * FROM categories ORDER BY name");
-                return res.json({ success: true, categories: result.rows });
-            } catch (setupErr) {
-                console.error("On-the-fly migration failed:", setupErr);
-                // Last resort: Return derived objects from items without table
-                try {
-                    const result = await db.query("SELECT DISTINCT category FROM items WHERE category IS NOT NULL ORDER BY category");
-                    return res.json({
-                        success: true,
-                        categories: result.rows.map((r, i) => ({
-                            id: (i + 1).toString(),
-                            name: r.category,
-                            description: r.category + ' items'
-                        }))
-                    });
-                } catch (lastErr) {
-                    return res.status(500).json({ success: false, error: lastErr.message });
-                }
-            }
-        } else {
-            console.error("Categories API Error:", error);
-            res.status(500).json({ success: false, error: error.message });
-        }
+        console.error("Categories API Error:", error);
+        // Provide enough detail to debug in browser console
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            code: error.code,
+            detail: "Database error occurred during category fetch/sync. Check server logs or connection."
+        });
     }
 });
 

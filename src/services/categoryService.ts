@@ -40,8 +40,18 @@ class CategoryService {
 
       // Fallback for old format
       return Array.isArray(data) ? data : [];
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching categories:", error);
+      // Attempt to log more details if it's a 500
+      if (error instanceof Error && error.message.includes('500')) {
+        try {
+          const response = await fetch(this.apiUrl);
+          const errorText = await response.text();
+          console.error("Detailed 500 Response:", errorText);
+        } catch (e) {
+          console.error("Could not fetch detailed error:", e);
+        }
+      }
       throw error;
     }
   }
