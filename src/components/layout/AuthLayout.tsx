@@ -55,7 +55,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
                     <div className="space-y-3 lg:space-y-4">
                         <h2 className="text-3xl lg:text-5xl font-bold leading-tight stagger-2">
                             Modern <br className="hidden lg:block" />
-                            <span className="text-blue-500 whitespace-nowrap lg:whitespace-normal text-xl lg:text-5xl lg:inline-block">Inventory Management</span>
+                            <span className="text-blue-500 whitespace-nowrap lg:whitespace-normal text-xl lg:text-5xl lg:inline-block">{APP_NAME} Management</span>
                         </h2>
                         <p className="text-gray-400 text-sm lg:text-lg max-w-md stagger-3 leading-relaxed">
                             Fast, professional, and precise asset tracking for your business.
