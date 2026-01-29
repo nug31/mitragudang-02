@@ -13,7 +13,7 @@ import {
   FileSpreadsheet,
   ListFilter,
   Search,
-  History,
+
   ArrowUpCircle,
   ArrowDownCircle,
 } from "lucide-react";
@@ -24,7 +24,7 @@ import ImportItemsModal from "../components/inventory/ImportItemsModal";
 import CategoryManagement from "../components/inventory/CategoryManagement";
 import BrowseItemsModal from "../components/inventory/BrowseItemsModal";
 import StockHistoryModal from "../components/inventory/StockHistoryModal";
-import StockSummaryCard from "../components/inventory/StockSummaryCard";
+
 import Select from "../components/ui/Select";
 import Input from "../components/ui/Input";
 import * as XLSX from "xlsx";
@@ -43,7 +43,7 @@ const InventoryPage: React.FC = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showBrowseModal, setShowBrowseModal] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<Item | null>(null);
@@ -385,15 +385,7 @@ const InventoryPage: React.FC = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 lg:gap-3">
-            <Button
-              variant="secondary"
-              onClick={() => setShowHistoryModal(true)}
-              icon={<History className="h-4 w-4" />}
-              className="flex-shrink-0"
-              size="sm"
-            >
-              History
-            </Button>
+
             <Button
               variant="outline"
               onClick={exportIncomingStockToExcel}
@@ -465,8 +457,7 @@ const InventoryPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Stock Summary Card */}
-      <StockSummaryCard refreshTrigger={items.length} />
+
 
       <Card className="mb-6">
         <CardContent className="p-4">
@@ -539,11 +530,7 @@ const InventoryPage: React.FC = () => {
         />
       )}
 
-      {showHistoryModal && (
-        <StockHistoryModal
-          onClose={() => setShowHistoryModal(false)}
-        />
-      )}
+
 
       {selectedHistoryItem && (
         <StockHistoryModal
