@@ -213,14 +213,113 @@ app.get("/api/stock-history/item/:itemId", async (req, res) => {
     }
 });
 
+// Setup Categories Table Endpoint
+app.get("/api/setup-categories", async (req, res) => {
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS categories (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL,
+                description TEXT,
+                "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Seed from Items if table is empty
+        const countRes = await db.query('SELECT COUNT(*) FROM categories');
+        if (parseInt(countRes.rows[0].count) === 0) {
+            await db.query(`
+                INSERT INTO categories (name, description)
+                SELECT DISTINCT category, category || ' items'
+                FROM items
+                WHERE category IS NOT NULL AND category != ''
+                ON CONFLICT (name) DO NOTHING;
+            `);
+        }
+
+        res.json({ success: true, message: "Categories table setup complete" });
+    } catch (error) {
+        console.error("Setup categories error:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Categories API
 app.get("/api/categories", async (req, res) => {
     try {
-        const result = await db.query("SELECT DISTINCT category FROM items WHERE category IS NOT NULL ORDER BY category");
-        res.json({ success: true, categories: result.rows.map(r => r.category) });
+        // Run setup implicitly if table missing (error handling) or just fetch
+        const result = await db.query("SELECT * FROM categories ORDER BY name");
+        res.json({ success: true, categories: result.rows });
     } catch (error) {
-        console.error("Categories error:", error);
-        res.status(500).json({ success: false, error: error.message });
+        // Fallback or legacy handled if table exists but empty? No, error usually means table missing.
+        if (error.code === '42P01') { // undefined_table
+            try {
+                const result = await db.query("SELECT DISTINCT category FROM items WHERE category IS NOT NULL ORDER BY category");
+                // Return as objects to match new schema
+                res.json({
+                    success: true,
+                    categories: result.rows.map((r, i) => ({
+                        id: (i + 1).toString(),
+                        name: r.category,
+                        description: r.category + ' items'
+                    }))
+                });
+            } catch (err) {
+                res.status(500).json({ success: false, error: err.message });
+            }
+        } else {
+            console.error("Categories error:", error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    }
+});
+
+app.post("/api/categories", async (req, res) => {
+    try {
+        const { name, description } = req.body;
+        if (!name) return res.status(400).json({ success: false, message: "Name required" });
+
+        const result = await db.query(
+            'INSERT INTO categories (name, description) VALUES ($1, $2) RETURNING *',
+            [name, description]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error("Create category error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.put("/api/categories/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description } = req.body;
+
+        const result = await db.query(
+            'UPDATE categories SET name = $1, description = $2, "updatedAt" = NOW() WHERE id = $3 RETURNING *',
+            [name, description, id]
+        );
+
+        if (result.rowCount === 0) return res.status(404).json({ success: false, message: "Category not found" });
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Update category error:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.delete("/api/categories/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await db.query('DELETE FROM categories WHERE id = $1', [id]);
+        if (result.rowCount === 0) return res.status(404).json({ success: false, message: "Category not found" });
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error("Delete category error:", err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 
@@ -879,6 +978,41 @@ module.exports = app;
 
 // Start the server only if run directly (not as a module)
 if (require.main === module) {
+    // Run auto-migration on startup
+    (async () => {
+        try {
+            // Create categories table
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS categories (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) UNIQUE NOT NULL,
+                    description TEXT,
+                    "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+                );
+            `);
+
+            // Seed from items if empty
+            try {
+                const countRes = await db.query('SELECT COUNT(*) FROM categories');
+                if (parseInt(countRes.rows[0].count) === 0) {
+                    await db.query(`
+                        INSERT INTO categories (name, description)
+                        SELECT DISTINCT category, category || ' items'
+                        FROM items
+                        WHERE category IS NOT NULL AND category != ''
+                        ON CONFLICT (name) DO NOTHING;
+                    `);
+                    console.log("✅ Categories table seeded from existing items.");
+                }
+            } catch (seedErr) {
+                console.error("Seeding error (non-fatal):", seedErr.message);
+            }
+        } catch (err) {
+            console.error("❌ Auto-migration failed:", err.message);
+        }
+    })();
+
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Unified server running on port ${PORT} with Supabase`);
     });
