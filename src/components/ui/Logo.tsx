@@ -1,5 +1,6 @@
 import React from "react";
 import logoImage from "../../img/logo.png";
+import { APP_NAME } from "../../config";
 
 interface LogoProps {
   size?: number;
@@ -10,7 +11,7 @@ const Logo: React.FC<LogoProps> = ({ size = 40, className = "" }) => {
   return (
     <img
       src={logoImage}
-      alt="Gudang Mitra Logo"
+      alt={`${APP_NAME} Logo`}
       width={size}
       height={size}
       className={className}

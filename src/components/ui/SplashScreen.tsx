@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Warehouse, Package, Box, Boxes } from 'lucide-react';
+import { APP_NAME } from '../../config';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -86,7 +87,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
           <div className="absolute inset-0 blur-2xl opacity-50">
             <div className="w-32 h-32 bg-gradient-to-br from-primary-400 to-secondary-400 rounded-full animate-pulse" />
           </div>
-          
+
           {/* Logo icon */}
           <div className="relative bg-white/10 backdrop-blur-lg p-8 rounded-3xl border border-white/20 shadow-2xl animate-scale-in">
             <Warehouse className="w-24 h-24 text-white drop-shadow-2xl" strokeWidth={1.5} />
@@ -96,7 +97,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* App name with typing effect */}
         <div className="text-center space-y-2">
           <h1 className="text-5xl md:text-6xl font-bold text-white tracking-tight animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            Gudang Mitra
+            {APP_NAME}
           </h1>
           <p className="text-xl text-white/80 font-medium animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
             Inventory Management System
@@ -106,7 +107,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* Loading bar */}
         <div className="w-64 md:w-80 animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
           <div className="h-1.5 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-primary-400 via-secondary-400 to-accent-400 rounded-full transition-all duration-300 ease-out shadow-lg shadow-primary-500/50"
               style={{ width: `${progress}%` }}
             />

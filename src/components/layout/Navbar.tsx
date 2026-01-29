@@ -16,6 +16,7 @@ import Button from "../ui/Button";
 import Logo from "../ui/Logo";
 import NotificationBell from "../notifications/NotificationBell";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { APP_NAME } from "../../config";
 
 const Navbar: React.FC = () => {
   const { user, logout, isAuthenticated, isAdmin } = useAuth();
@@ -27,7 +28,7 @@ const Navbar: React.FC = () => {
   // Handle scroll effect with throttle for better performance
   useEffect(() => {
     let ticking = false;
-    
+
     const handleScroll = () => {
       if (!ticking) {
         requestAnimationFrame(() => {
@@ -44,7 +45,7 @@ const Navbar: React.FC = () => {
 
     // Initial check
     handleScroll();
-    
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", handleScroll);
@@ -77,11 +78,10 @@ const Navbar: React.FC = () => {
 
   return (
     <nav
-      className={`sticky-navbar transition-all duration-500 ease-out ${
-        scrolled
+      className={`sticky-navbar transition-all duration-500 ease-out ${scrolled
           ? "bg-white/90 backdrop-blur-lg shadow-3d-hover border-b border-white/30 py-2"
           : "bg-white/95 backdrop-blur-md shadow-3d border-b border-white/20 py-0"
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
@@ -89,7 +89,7 @@ const Navbar: React.FC = () => {
             <Link to="/" className="flex-shrink-0 flex items-center">
               <Logo size={48} className="rounded-full" />
               <span className="ml-2 text-xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-                Gudang Mitra
+                {APP_NAME}
               </span>
             </Link>
 
@@ -97,22 +97,20 @@ const Navbar: React.FC = () => {
             <div className="hidden sm:ml-8 sm:flex sm:space-x-8">
               <Link
                 to="/"
-                className={`${
-                  isActive("/")
+                className={`${isActive("/")
                     ? "border-primary-500 text-primary-600"
                     : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
               >
                 <Home className="h-4 w-4 mr-1" />
                 Dashboard
               </Link>
               <Link
                 to="/browse"
-                className={`${
-                  isActive("/browse")
+                className={`${isActive("/browse")
                     ? "border-primary-500 text-primary-600"
                     : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
               >
                 <ShoppingBag className="h-4 w-4 mr-1" />
                 Browse Items
@@ -121,11 +119,10 @@ const Navbar: React.FC = () => {
                 <>
                   <Link
                     to="/requests"
-                    className={`${
-                      isActive("/requests")
+                    className={`${isActive("/requests")
                         ? "border-primary-500 text-primary-600"
                         : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                      } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                   >
                     <ClipboardList className="h-4 w-4 mr-1" />
                     Requests
@@ -135,22 +132,20 @@ const Navbar: React.FC = () => {
                     <>
                       <Link
                         to="/inventory"
-                        className={`${
-                          isActive("/inventory")
+                        className={`${isActive("/inventory")
                             ? "border-primary-500 text-primary-600"
                             : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                        } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                          } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                       >
                         <BoxIcon className="h-4 w-4 mr-1" />
                         Inventory
                       </Link>
                       <Link
                         to="/reports/monthly"
-                        className={`${
-                          isActive("/reports/monthly")
+                        className={`${isActive("/reports/monthly")
                             ? "border-primary-500 text-primary-600"
                             : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                        } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                          } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                       >
                         <BarChart3 className="h-4 w-4 mr-1" />
                         Reports
@@ -160,11 +155,10 @@ const Navbar: React.FC = () => {
                       {user?.role === "manager" && (
                         <Link
                           to="/users"
-                          className={`${
-                            isActive("/users")
+                          className={`${isActive("/users")
                               ? "border-primary-500 text-primary-600"
                               : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                          } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                            } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                         >
                           <Users className="h-4 w-4 mr-1" />
                           Users
@@ -185,7 +179,7 @@ const Navbar: React.FC = () => {
                 <div className="hidden sm:block">
                   <NotificationBell />
                 </div>
-                
+
                 {/* Profile Dropdown */}
                 <div className="relative">
                   <button
@@ -210,11 +204,11 @@ const Navbar: React.FC = () => {
                   {showProfileDropdown && (
                     <>
                       {/* Overlay to close dropdown */}
-                      <div 
-                        className="fixed inset-0 z-10" 
+                      <div
+                        className="fixed inset-0 z-10"
                         onClick={() => setShowProfileDropdown(false)}
                       />
-                      
+
                       <div className="absolute right-0 mt-2 w-48 bg-white/95 backdrop-blur-lg rounded-xl shadow-xl border border-white/20 z-20 overflow-hidden">
                         <div className="py-2">
                           {/* User Info Header */}
@@ -232,14 +226,14 @@ const Navbar: React.FC = () => {
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Menu Items */}
                           <div className="py-1">
                             <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2">
                               <User className="w-4 h-4" />
                               <span>My Profile</span>
                             </button>
-                            <button 
+                            <button
                               onClick={handleLogout}
                               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                             >
@@ -252,7 +246,7 @@ const Navbar: React.FC = () => {
                     </>
                   )}
                 </div>
-                
+
                 {/* Mobile Notification Bell */}
                 <div className="sm:hidden">
                   <NotificationBell />
