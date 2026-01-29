@@ -296,12 +296,13 @@ app.get("/api/categories", async (req, res) => {
         // 1. Try to fetch existing categories
         let result = await db.query("SELECT * FROM categories ORDER BY name");
 
-        // 2. Sync with items table (Self-Healing) - IMPROVED: Case-insensitive check
+        // 2. Sync with items table (Self-Healing) - IMPROVED: Case-insensitive check & only ACTIVE items
         const missingResult = await db.query(`
             SELECT DISTINCT i.category 
             FROM items i 
             LEFT JOIN categories c ON LOWER(i.category) = LOWER(c.name)
-            WHERE i.category IS NOT NULL 
+            WHERE (i."isActive" = 1 OR i."isActive" IS NULL)
+            AND i.category IS NOT NULL 
             AND i.category != '' 
             AND c.id IS NULL
         `);
@@ -375,12 +376,12 @@ app.delete("/api/categories/:id", async (req, res) => {
         const catResult = await db.query('SELECT name FROM categories WHERE id = $1', [id]);
         if (catResult.rows.length > 0) {
             const categoryName = catResult.rows[0].name;
-            const useCount = await db.query('SELECT COUNT(*) FROM items WHERE category = $1', [categoryName]);
+            const useCount = await db.query('SELECT COUNT(*) FROM items WHERE category = $1 AND ("isActive" = 1 OR "isActive" IS NULL)', [categoryName]);
 
             if (parseInt(useCount.rows[0].count) > 0) {
                 return res.status(400).json({
                     success: false,
-                    message: `Tidak dapat menghapus. Masih ada ${useCount.rows[0].count} barang yang menggunakan kategori "${categoryName}". Silakan pindahkan barang tersebut ke kategori lain terlebih dahulu.`
+                    message: `Tidak dapat menghapus. Masih ada ${useCount.rows[0].count} barang aktif yang menggunakan kategori "${categoryName}". Silakan ubah kategori barang tersebut terlebih dahulu.`
                 });
             }
         }

@@ -183,7 +183,16 @@ class CategoryService {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to delete category: ${response.statusText}`);
+        let errorMessage = `Failed to delete category: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData && errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // Fallback if not JSON
+        }
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error(`Error deleting category with id ${id}:`, error);
