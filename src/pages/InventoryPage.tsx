@@ -30,7 +30,6 @@ import Input from "../components/ui/Input";
 import * as XLSX from "xlsx";
 import { itemService } from "../services/itemService";
 import { categoryService } from "../services/categoryService";
-import { requestService } from "../services/requestService";
 import { normalizeCategory, categoriesAreEqual } from "../utils/categoryUtils";
 import { API_BASE_URL } from "../config";
 
@@ -245,59 +244,114 @@ const InventoryPage: React.FC = () => {
     return true;
   });
 
-  const exportItemsToExcel = () => {
-    if (items.length === 0) return;
+  // Define the stock history entry interface
+  interface StockHistoryEntry {
+    id: number;
+    item_id: number;
+    change_type: string;
+    quantity_before: number;
+    quantity_change: number;
+    quantity_after: number;
+    notes?: string;
+    created_by?: string;
+    created_at: string;
+    item_name?: string;
+    category?: string;
+  }
 
-    const exportData = items.map((item) => ({
-      ID: item.id,
-      Nama: item.name,
-      Deskripsi: item.description,
-      Kategori: item.category,
-      Stok: item.quantity,
-      "Min Stok": item.minQuantity,
-      Status: item.status,
-      Harga: item.price || 0,
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventory");
-
-    const filename = `Inventory_List_${new Date().toISOString().split("T")[0]}.xlsx`;
-    XLSX.writeFile(workbook, filename);
+  const fetchStockHistory = async (): Promise<StockHistoryEntry[]> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/items?include_history=true`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch stock history");
+      }
+      const data = await response.json();
+      return data.history || [];
+    } catch (err) {
+      console.error("Error fetching stock history:", err);
+      return [];
+    }
   };
 
-  const exportRequestsToExcel = async () => {
+  const exportIncomingStockToExcel = async () => {
     try {
       setLoading(true);
-      const requests = await requestService.getAllRequests();
+      const history = await fetchStockHistory();
 
-      if (requests.length === 0) {
-        alert("Tidak ada riwayat permintaan untuk diekspor.");
+      // Filter for incoming stock (positive quantity_change)
+      const incomingHistory = history.filter((entry) => entry.quantity_change > 0);
+
+      if (incomingHistory.length === 0) {
+        alert("Tidak ada riwayat barang masuk untuk diekspor.");
         return;
       }
 
-      const exportData = requests.map((req) => ({
-        ID: req.id,
-        "Nama Barang": req.itemName,
-        Pemohon: req.requesterName,
-        Proyek: req.projectName || "-",
-        Jumlah: req.quantity,
-        Status: req.status,
-        Prioritas: req.priority,
-        Tanggal: new Date(req.createdAt).toLocaleDateString("id-ID"),
-        Alasan: req.description || "-",
-      }));
+      const exportData = incomingHistory.map((entry) => {
+        const date = new Date(entry.created_at);
+        return {
+          Tanggal: date.toLocaleDateString("id-ID"),
+          Jam: date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+          "Nama Barang": entry.item_name || `Item #${entry.item_id}`,
+          Kategori: entry.category || "-",
+          "Perubahan (+)": `+${entry.quantity_change}`,
+          "Stok Sebelum": entry.quantity_before,
+          "Stok Setelah": entry.quantity_after,
+          Catatan: entry.notes || "-",
+          "Oleh": entry.created_by || "-",
+        };
+      });
 
       const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "User Requests");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Barang Masuk");
 
-      const filename = `User_Requests_${new Date().toISOString().split("T")[0]}.xlsx`;
+      const filename = `Barang_Masuk_${new Date().toISOString().split("T")[0]}.xlsx`;
       XLSX.writeFile(workbook, filename);
     } catch (err) {
-      console.error("Error exporting requests:", err);
-      setError("Failed to export requests");
+      console.error("Error exporting incoming stock:", err);
+      setError("Failed to export incoming stock history");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportOutgoingStockToExcel = async () => {
+    try {
+      setLoading(true);
+      const history = await fetchStockHistory();
+
+      // Filter for outgoing stock (negative quantity_change)
+      const outgoingHistory = history.filter((entry) => entry.quantity_change < 0);
+
+      if (outgoingHistory.length === 0) {
+        alert("Tidak ada riwayat barang keluar untuk diekspor.");
+        return;
+      }
+
+      const exportData = outgoingHistory.map((entry) => {
+        const date = new Date(entry.created_at);
+        return {
+          Tanggal: date.toLocaleDateString("id-ID"),
+          Jam: date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
+          "Nama Barang": entry.item_name || `Item #${entry.item_id}`,
+          Kategori: entry.category || "-",
+          "Perubahan (-)": entry.quantity_change,
+          "Stok Sebelum": entry.quantity_before,
+          "Stok Setelah": entry.quantity_after,
+          Catatan: entry.notes || "-",
+          "Oleh": entry.created_by || "-",
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Barang Keluar");
+
+      const filename = `Barang_Keluar_${new Date().toISOString().split("T")[0]}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+    } catch (err) {
+      console.error("Error exporting outgoing stock:", err);
+      setError("Failed to export outgoing stock history");
     } finally {
       setLoading(false);
     }
@@ -340,7 +394,7 @@ const InventoryPage: React.FC = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={exportItemsToExcel}
+              onClick={exportIncomingStockToExcel}
               icon={<ArrowUpCircle className="h-4 w-4 text-green-600" />}
               className="flex-shrink-0 border-green-200 text-green-700 hover:bg-green-50"
               size="sm"
@@ -349,7 +403,7 @@ const InventoryPage: React.FC = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={exportRequestsToExcel}
+              onClick={exportOutgoingStockToExcel}
               icon={<ArrowDownCircle className="h-4 w-4 text-red-600" />}
               className="flex-shrink-0 border-red-200 text-red-700 hover:bg-red-50"
               size="sm"
