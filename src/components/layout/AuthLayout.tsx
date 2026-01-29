@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import { LogIn, Globe, Instagram, Github } from "lucide-react";
+import { APP_NAME } from "../../config";
 
 interface AuthLayoutProps {
     children: ReactNode;
@@ -8,7 +9,7 @@ interface AuthLayoutProps {
 
 const AuthLayout: React.FC<AuthLayoutProps> = ({
     children,
-    title = "MitraGudang"
+    title = APP_NAME
 }) => {
     return (
         <div className="min-h-screen bg-[#0a0f18] flex items-center justify-center p-4 relative overflow-hidden font-sans">
