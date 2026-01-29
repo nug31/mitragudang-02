@@ -296,11 +296,11 @@ app.get("/api/categories", async (req, res) => {
         // 1. Try to fetch existing categories
         let result = await db.query("SELECT * FROM categories ORDER BY name");
 
-        // 2. Sync with items table (Self-Healing)
+        // 2. Sync with items table (Self-Healing) - IMPROVED: Case-insensitive check
         const missingResult = await db.query(`
             SELECT DISTINCT i.category 
             FROM items i 
-            LEFT JOIN categories c ON i.category = c.name 
+            LEFT JOIN categories c ON LOWER(i.category) = LOWER(c.name)
             WHERE i.category IS NOT NULL 
             AND i.category != '' 
             AND c.id IS NULL
@@ -309,6 +309,7 @@ app.get("/api/categories", async (req, res) => {
         if (missingResult.rows.length > 0) {
             console.log(`Found ${missingResult.rows.length} missing categories. Syncing...`);
             for (const row of missingResult.rows) {
+                // Ensure we don't insert duplicate if another row in the same loop matches by case
                 await db.query(`
                     INSERT INTO categories (name, description) 
                     VALUES ($1, $2) 
@@ -369,6 +370,21 @@ app.put("/api/categories/:id", async (req, res) => {
 app.delete("/api/categories/:id", async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Check if category is in use
+        const catResult = await db.query('SELECT name FROM categories WHERE id = $1', [id]);
+        if (catResult.rows.length > 0) {
+            const categoryName = catResult.rows[0].name;
+            const useCount = await db.query('SELECT COUNT(*) FROM items WHERE category = $1', [categoryName]);
+
+            if (parseInt(useCount.rows[0].count) > 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Tidak dapat menghapus. Masih ada ${useCount.rows[0].count} barang yang menggunakan kategori "${categoryName}". Silakan pindahkan barang tersebut ke kategori lain terlebih dahulu.`
+                });
+            }
+        }
+
         const result = await db.query('DELETE FROM categories WHERE id = $1', [id]);
         if (result.rowCount === 0) return res.status(404).json({ success: false, message: "Category not found" });
 
