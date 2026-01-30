@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import Input from "../ui/Input";
 import Button from "../ui/Button";
 import Alert from "../ui/Alert";
-import { LogIn } from "lucide-react";
+import { LogIn, Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import SuccessOverlay from "./SuccessOverlay";
 
@@ -17,6 +17,7 @@ const LoginForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [authStatus, setAuthStatus] = useState<'loading' | 'success'>('loading');
+  const [showPassword, setShowPassword] = useState(false);
 
   // 3D Tilt Effect State
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -138,12 +139,26 @@ const LoginForm: React.FC = () => {
                 </div>
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
                   className="bg-black/40 border-white/10 text-white placeholder:text-gray-600 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all rounded-xl h-12"
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-1 hover:bg-white/10 rounded-lg transition-colors focus:outline-none"
+                      title={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  }
                 />
               </div>
 
