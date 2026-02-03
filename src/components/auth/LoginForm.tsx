@@ -95,15 +95,6 @@ const LoginForm: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
           <div className="relative z-10 space-y-8">
-            <div className="text-center space-y-2 animate-fade-in-up stagger-1">
-              <h2 className="text-3xl font-black text-white tracking-tight">
-                Welcome Back
-              </h2>
-              <p className="text-gray-400 font-medium">
-                Enter your credentials to continue
-              </p>
-            </div>
-
             {error && (
               <div className="animate-scale-in">
                 <Alert
